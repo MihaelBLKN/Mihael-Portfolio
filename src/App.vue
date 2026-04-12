@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AsciiComputer from "./components/AsciiComputer.vue";
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
 
 const mouse = { x: -100, y: -100 };
@@ -263,7 +264,9 @@ const projects = [
     </div>
 
     <div class="relative z-10 container mx-auto px-6 md:px-12 lg:px-24">
-      <section class="min-h-[90vh] flex py-20 reveal relative">
+      <section
+        class="min-h-[90vh] flex flex-col md:flex-row items-center py-20 reveal relative"
+      >
         <div
           class="w-full md:w-3/4 flex flex-col justify-center z-10 bg-zinc-950/20 rounded-[3rem] backdrop-blur-[2px] -mx-6 px-6 lg:-mx-12 lg:px-12 shadow-black/5"
         >
@@ -310,6 +313,12 @@ const projects = [
               Get in touch
             </a>
           </div>
+        </div>
+
+        <div
+          class="w-full md:w-1/2 flex justify-center items-center pointer-events-auto"
+        >
+          <AsciiComputer />
         </div>
 
         <div
