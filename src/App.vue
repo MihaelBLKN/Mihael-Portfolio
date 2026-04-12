@@ -119,8 +119,21 @@ const onFrame = () => {
           drawX - Math.cos(angle) * s.length,
           drawY - Math.sin(angle) * s.length,
         );
-        grad.addColorStop(0, "rgba(168, 85, 247, 0.4)");
-        grad.addColorStop(1, "rgba(168, 85, 247, 0)");
+
+        let r = 168,
+          g = 85,
+          b = 247,
+          a = 0.4;
+        if (dist < 300) {
+          const intensity = Math.pow((300 - dist) / 300, 1.5);
+          r = Math.round(lerp(168, 255, intensity));
+          g = Math.round(lerp(85, 255, intensity));
+          b = Math.round(lerp(247, 255, intensity));
+          a = lerp(0.4, 1.0, intensity);
+        }
+
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${a})`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
 
         ctx.strokeStyle = grad;
         ctx.beginPath();
