@@ -74,9 +74,10 @@ const onFrame = () => {
   }
 
   if (canvasRef.value) {
-    const ctx = canvasRef.value.getContext("2d");
+    const canvas = canvasRef.value;
+    const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.lineWidth = 1.5;
       const angle = Math.PI / 3;
 
@@ -84,16 +85,13 @@ const onFrame = () => {
         s.x += Math.cos(angle) * s.speed;
         s.y += Math.sin(angle) * s.speed;
 
-        if (
-          s.x > canvasRef.value.width + s.length ||
-          s.y > canvasRef.value.height + s.length
-        ) {
+        if (s.x > canvas.width + s.length || s.y > canvas.height + s.length) {
           if (Math.random() > 0.5) {
-            s.x = Math.random() * canvasRef.value.width;
+            s.x = Math.random() * canvas.width;
             s.y = -s.length;
           } else {
             s.x = -s.length;
-            s.y = Math.random() * canvasRef.value.height;
+            s.y = Math.random() * canvas.height;
           }
         }
 
