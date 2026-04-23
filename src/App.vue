@@ -1,228 +1,20 @@
 <script setup lang="ts">
-import AsciiComputer from "./components/AsciiComputer.vue";
-import { ref, onMounted, onUnmounted, nextTick } from "vue";
-
-const mouse = { x: -100, y: -100 };
-const pos = { x: -100, y: -100 };
-const hovering = ref(false);
-const velocity = ref(0);
-let frameId: number;
-
-const lerp = (start: number, end: number, factor: number) =>
-  start + (end - start) * factor;
-
-const handleMouseMove = (e: MouseEvent) => {
-  mouse.x = e.clientX;
-  mouse.y = e.clientY;
-
-  const target = e.target as HTMLElement;
-  if (
-    target?.tagName === "A" ||
-    target?.tagName === "BUTTON" ||
-    target?.closest("a") ||
-    target?.closest("button")
-  ) {
-    hovering.value = true;
-  } else {
-    hovering.value = false;
-  }
-};
-
-const canvasRef = ref<HTMLCanvasElement | null>(null);
-const stars = [] as any[];
-const initCanvas = () => {
-  if (canvasRef.value) {
-    const resize = () => {
-      if (canvasRef.value) {
-        canvasRef.value.width = window.innerWidth;
-        canvasRef.value.height = window.innerHeight;
-      }
-    };
-    window.addEventListener("resize", resize);
-    resize();
-
-    for (let i = 0; i < 40; i++) {
-      stars.push({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        length: Math.random() * 60 + 20,
-        speed: Math.random() * 2 + 0.5,
-        lx: 0,
-        ly: 0,
-      });
-    }
-  }
-};
-
-const onFrame = () => {
-  pos.x = lerp(pos.x, mouse.x, 0.4);
-  pos.y = lerp(pos.y, mouse.y, 0.4);
-
-  const dxMouse = mouse.x - pos.x;
-  const dyMouse = mouse.y - pos.y;
-  velocity.value = Math.min(
-    Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse) / 50,
-    1.5,
-  );
-
-  const cursorDot = document.getElementById("cursor-dot");
-
-  if (cursorDot) {
-    const angleCursor = Math.atan2(dyMouse, dxMouse);
-    const stretch = 1 + velocity.value * 0.2;
-    const scaleY = 1 - velocity.value * 0.1;
-    cursorDot.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) rotate(${angleCursor}rad) scaleX(${stretch}) scaleY(${scaleY})`;
-  }
-
-  if (canvasRef.value) {
-    const canvas = canvasRef.value;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.lineWidth = 1.5;
-      const angle = Math.PI / 3;
-
-      stars.forEach((s) => {
-        s.x += Math.cos(angle) * s.speed;
-        s.y += Math.sin(angle) * s.speed;
-
-        if (s.x > canvas.width + s.length || s.y > canvas.height + s.length) {
-          if (Math.random() > 0.5) {
-            s.x = Math.random() * canvas.width;
-            s.y = -s.length;
-          } else {
-            s.x = -s.length;
-            s.y = Math.random() * canvas.height;
-          }
-        }
-
-        const dx = s.x - mouse.x;
-        const dy = s.y - mouse.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        let targetLx = 0,
-          targetLy = 0;
-        if (dist < 200) {
-          const force = (200 - dist) / 200;
-          targetLx = (dx / dist) * force * 80;
-          targetLy = (dy / dist) * force * 80;
-        }
-
-        s.lx = lerp(s.lx, targetLx, 0.1);
-        s.ly = lerp(s.ly, targetLy, 0.1);
-
-        const drawX = s.x + s.lx;
-        const drawY = s.y + s.ly;
-
-        const grad = ctx.createLinearGradient(
-          drawX,
-          drawY,
-          drawX - Math.cos(angle) * s.length,
-          drawY - Math.sin(angle) * s.length,
-        );
-
-        let r = 168,
-          g = 85,
-          b = 247,
-          a = 0.4;
-        if (dist < 300) {
-          const intensity = Math.pow((300 - dist) / 300, 1.5);
-          r = Math.round(lerp(168, 255, intensity));
-          g = Math.round(lerp(85, 255, intensity));
-          b = Math.round(lerp(247, 255, intensity));
-          a = lerp(0.4, 1.0, intensity);
-        }
-
-        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${a})`);
-        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-
-        ctx.strokeStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(drawX, drawY);
-        ctx.lineTo(
-          drawX - Math.cos(angle) * s.length,
-          drawY - Math.sin(angle) * s.length,
-        );
-        ctx.stroke();
-      });
-    }
-  }
-
-  frameId = requestAnimationFrame(onFrame);
-};
-
-const handleScroll = () => {
-  const scrolled = window.scrollY;
-  const parallaxBg = document.getElementById("parallax-bg");
-  if (parallaxBg) {
-    parallaxBg.style.transform = `translate3d(0, ${scrolled * 0.3}px, 0)`;
-  }
-};
-
-const setupObservers = () => {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("reveal-active");
-        }
-      });
-    },
-    { threshold: 0.15 },
-  );
-
-  document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
-};
-
-onMounted(() => {
-  window.addEventListener("mousemove", handleMouseMove);
-  window.addEventListener("scroll", handleScroll, { passive: true });
-
-  initCanvas();
-  frameId = requestAnimationFrame(onFrame);
-
-  nextTick(() => {
-    setupObservers();
-  });
-});
-
-onUnmounted(() => {
-  window.removeEventListener("mousemove", handleMouseMove);
-  window.removeEventListener("scroll", handleScroll);
-  cancelAnimationFrame(frameId);
-});
-
 const techStack = [
   {
     category: "Backend",
     items: ["GoLang", "TypeScript", "Luau", "Python", "PHP", "Node.js"],
   },
-  { category: "Distributed", items: ["Kafka", "gRPC", "Raft", "Redis"] },
+  {
+    category: "Frontend",
+    items: ["Vue", "React", "HTML", "CSS", "Tailwind"],
+  },
   {
     category: "Databases",
     items: ["PostgreSQL", "Cassandra", "MySQL", "Firebase", "MongoDB"],
   },
   {
-    category: "Observability",
-    items: ["OpenTelemetry", "Prometheus", "Grafana"],
-  },
-];
-
-const specialization = [
-  {
-    area: "High-Concurrency Architecture",
-    desc: "Designing stateless compute loops that sustain massive traffic spikes with predictable, low latencies.",
-  },
-  {
-    area: "Microservices & Event-Driven",
-    desc: "Decoupling complex bounded contexts using Kafka and gRPC to establish resilient, self-healing system topologies.",
-  },
-  {
-    area: "Performance Tuning & Profiling",
-    desc: "Deep diving into runtime flame graphs, catching memory leaks, and tuning garbage collection parameters.",
-  },
-  {
-    area: "Infrastructure & Kubernetes",
-    desc: "Crafting robust GitOps delivery pipelines and architecting auto-scaling K8s platforms across multi-region deployments.",
+    category: "Infrastructure",
+    items: ["Kubernetes", "Kafka", "gRPC", "Docker", "Linux"],
   },
 ];
 
@@ -230,440 +22,201 @@ const projects = [
   {
     name: "Luaxis",
     problem:
-      "No proper ROBLOX courses that had a in-website ROBLOX LUAU runtime and no quality courses on both game development and computers and applicable knowledge in roblox, so we fixed it.",
+      "There were no practical Roblox courses with an in-browser Luau runtime.",
     architecture:
-      "Microservices and Kubernetes to run a custom in-browser Luau runtime, course management, and interactive coding challenges.",
-    tech: "GoLang, gRPC, Containerd, Kubernetes, Luau, Zap, Three.js, WASM",
+      "We built microservices and used Kubernetes to run a custom in-browser Luau runtime. We implemented course management and interactive coding challenges.",
+    tech: "GoLang, Containerd, Kubernetes, Luau, Zap, Three.js, WASM",
     outcome:
-      "Ability to handle 5,000+ users simultaneously running code in-browser with zero downtime and a growing catalog of courses on both game development and computer science topics.",
+      "The system handles 160+ simultaneous users. Uptime remains at 99.98%.",
     demoUrl: "https://luaxis.xyz/",
+    isDemo: false,
   },
   {
     name: "Smart Academic Tutor",
     problem:
-      "Existing online learning platforms lack personalized, real-time feedback mechanisms, leading to decreased student engagement and suboptimal learning outcomes, as well the pricing is absolutely ridiculous.",
+      "Online learning platforms lacked real-time feedback. Pricing was too high.",
     architecture:
-      "Designed a microservices architecture with a central recommendation engine that analyzes student interactions and performance data to provide personalized learning paths and real-time feedback.",
-    tech: "TypeScript, Node.js, Kafka, Firebase, OpenAI API, self-hosted AI model",
+      "I designed a microservices architecture. I built a central recommendation engine. The engine analyzes student interactions to provide personalized learning paths.",
+    tech: "TypeScript, Node.js, Kafka, Firebase, OpenAI API",
     outcome:
-      "Implemented a prototype that demonstrated a 30% increase in student engagement and a 20% improvement in learning outcomes compared to traditional online learning platforms, as well as affordable pricing.",
+      "Student engagement increased by 30%. Learning outcomes improved by 20%. The platform is cost-effective.",
     demoUrl: "http://207.180.243.164:6967/smart-academic-tutor/",
+    isDemo: true,
+  },
+];
+
+const experience = [
+  {
+    role: "Senior Backend Engineer",
+    company: "SomethingStudio",
+    period: "2024 - 2026",
+    bullets: [
+      "Developed in-game backend systems.",
+      "Processed 100+ event updates per second.",
+      "Built web services to manage game events.",
+      "Achieved 99.9% successful event delivery.",
+      "Reduced manual operations by 40%.",
+    ],
+  },
+  {
+    role: "Backend Engineer",
+    company: "Blackout Innovations",
+    period: "2023 - 2024",
+    bullets: [
+      "Designed highly concurrent backend services.",
+      "Supported 150+ concurrent players.",
+      "Handled 150 gameplay events per second.",
+      "Reduced processing latency from 120ms to 40ms.",
+      "Decreased server-side errors by 35%.",
+    ],
   },
 ];
 </script>
 
 <template>
-  <div
-    class="parallax-wrapper relative bg-zinc-950 text-zinc-50 font-sans selection:bg-purple-900/50"
-  >
-    <canvas
-      ref="canvasRef"
-      class="fixed inset-0 w-full h-full z-0 pointer-events-none opacity-70 mix-blend-screen"
-    ></canvas>
+  <div class="min-h-screen selection:bg-purple-500 selection:text-white">
+    <header class="relative px-6 py-32 md:px-12 lg:px-24 border-editorial-b overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] z-0"></div>
+      
+      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-purple-500/20 blur-[120px] rounded-full pointer-events-none z-0 mix-blend-screen"></div>
 
-    <div
-      id="cursor-dot"
-      class="custom-cursor custom-cursor-dot"
-      :class="{ hovering: hovering }"
-    ></div>
-
-    <div id="parallax-bg" class="fixed inset-0 pointer-events-none z-0">
-      <div
-        class="bg-glow w-[600px] h-[600px] bg-purple-600/20 top-[-10%] left-[-10%]"
-      ></div>
-      <div
-        class="bg-glow w-[800px] h-[800px] bg-blue-600/10 top-[40%] right-[-20%]"
-      ></div>
-    </div>
-
-    <div class="relative z-10 container mx-auto px-6 md:px-12 lg:px-24">
-      <section
-        class="min-h-[90vh] flex flex-col md:flex-row items-center py-20 reveal relative"
-      >
-        <div
-          class="w-full md:w-3/4 flex flex-col justify-center z-10 bg-zinc-950/20 rounded-[3rem] backdrop-blur-[2px] -mx-6 px-6 lg:-mx-12 lg:px-12 shadow-black/5"
-        >
-          <div
-            class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/80 border border-zinc-800 text-sm text-zinc-400 mb-8 w-fit backdrop-blur-md"
-          >
-            <span
-              class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"
-            ></span>
-            Open for opportunities
-          </div>
-          <h1
-            class="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-6 text-glow"
-          >
-            Mihael
-            <span
-              class="bg-gradient-to-b from-zinc-100 to-zinc-500 bg-clip-text text-transparent"
-              >Pleško</span
-            >
+      <div class="relative z-10 max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center lg:items-start gap-12 lg:gap-24">
+        
+        <div class="flex-1 w-full">
+          <h1 class="text-6xl md:text-8xl lg:text-9xl font-serif text-white tracking-tighter mb-8 leading-none">
+            Mihael<br />Pleško.
           </h1>
-          <h2
-            class="text-2xl md:text-3xl text-zinc-400 font-medium mb-8 max-w-2xl leading-snug"
-          >
-            Backend Engineer specializing in Distributed Systems & Highly
-            Concurrent Architecture.
+          <h2 class="text-3xl md:text-5xl font-serif text-zinc-400 leading-tight mb-8">
+            Website Developer.
           </h2>
-          <p class="text-zinc-500 text-lg mb-12 max-w-xl">
-            I design software that doesn't break under pressure. Focused on
-            system observability, fault-tolerance, and resilient scale. I
-            provide results, not
-            <span class="text-purple-400 font-bold">bullsh*t</span>.
+          <p class="text-lg md:text-xl text-zinc-300 max-w-md font-sans leading-relaxed mb-12">
+            You need a reliable web application. I build frontends and backends. My code handles high traffic without breaking. I deliver functional results.
           </p>
-          <div class="flex gap-4">
-            <a
-              href="#projects"
-              class="px-6 py-3 bg-zinc-100 text-zinc-950 font-semibold rounded-lg hover:bg-white hover:scale-105 transition-all shadow-lg hover:shadow-zinc-100/30"
-            >
-              View Work
-            </a>
-            <a
-              href="#contact"
-              class="px-6 py-3 border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-800 text-zinc-300 font-semibold rounded-lg transition-colors backdrop-blur-md"
-            >
-              Get in touch
-            </a>
-          </div>
-        </div>
-
-        <div
-          class="w-full md:w-1/2 flex justify-center items-center pointer-events-auto"
-        >
-          <AsciiComputer />
-        </div>
-
-        <div
-          class="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-80 hover:opacity-100 transition-opacity animate-[pulse_3s_ease-in-out_infinite]"
-        >
-          <span
-            class="text-xs font-semibold tracking-widest uppercase text-zinc-300"
-            >Scroll</span
-          >
-          <svg
-            class="w-5 h-5 text-zinc-200 animate-bounce"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            ></path>
-          </svg>
-        </div>
-      </section>
-
-      <section class="py-32 border-y border-zinc-900/50 reveal">
-        <div
-          class="flex flex-col md:flex-row justify-between items-start gap-12 lg:gap-24 max-w-6xl"
-        >
-          <div class="flex flex-col gap-2 group">
-            <div
-              class="text-7xl lg:text-8xl font-black text-white tracking-tighter group-hover:text-purple-400 transition-colors"
-            >
-              2<span class="text-5xl lg:text-6xl text-zinc-600">+</span>
-            </div>
-            <div
-              class="text-zinc-500 font-bold text-sm tracking-widest uppercase"
-            >
-              Years of Commercial/Corporate Experience
-            </div>
-            <div class="text-zinc-400 mt-2 max-w-xs text-lg">
-              Architecting resilient schemas inside fast-paced engineering
-              teams.
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-2 group">
-            <div
-              class="text-7xl lg:text-8xl font-black text-white tracking-tighter group-hover:text-purple-400 transition-colors"
-            >
-              99<span class="text-5xl lg:text-6xl text-purple-500">.99%</span>
-            </div>
-            <div
-              class="text-zinc-500 font-bold text-sm tracking-widest uppercase"
-            >
-              Service Uptime
-            </div>
-            <div class="text-zinc-400 mt-2 max-w-xs text-lg">
-              Maintained securely across volatile distributed microservices.
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-2 group">
-            <div
-              class="text-7xl lg:text-8xl font-black text-white tracking-tighter group-hover:text-purple-400 transition-colors"
-            >
-              100<span class="text-5xl lg:text-6xl text-purple-500">k</span>
-            </div>
-            <div
-              class="text-zinc-500 font-bold text-sm tracking-widest uppercase"
-            >
-              Events / Second
-            </div>
-            <div class="text-zinc-400 mt-2 max-w-xs text-lg">
-              Peaks processed flawlessly via scalable runtime integrations.
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="py-32 reveal">
-        <h3 class="text-4xl font-bold mb-12 tracking-tight">
-          Technology Target
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div
-            v-for="(group, i) in techStack"
-            :key="i"
-            class="border border-zinc-800/80 bg-zinc-950/50 backdrop-blur-md p-8 rounded-3xl hover:border-zinc-700/80 transition-colors shadow-xl"
-          >
-            <h4
-              class="text-zinc-100 font-semibold mb-6 flex items-center gap-3"
-            >
-              <div class="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
-              {{ group.category }}
-            </h4>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="item in group.items"
-                :key="item"
-                class="px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-300 shadow-sm hover:bg-zinc-800 hover:text-white transition-colors"
-              >
-                {{ item }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="py-32 reveal">
-        <div class="grid lg:grid-cols-2 gap-16 lg:gap-32">
-          <div class="sticky top-24 self-start">
-            <h3 class="text-4xl font-bold mb-8 tracking-tight">
-              Engineering Philosophy
-            </h3>
-            <div class="space-y-6 text-zinc-400 text-xl leading-relaxed">
-              <p>
-                My fundamental engineering belief is that architecture should be
-                as simple as possible, but no simpler. I prioritize stateless
-                node operations and push complexity to persistent data
-                boundaries only when necessary.
-              </p>
-              <p>
-                Readability counts, but at scale,
-                <em>mechanical sympathy</em> prevents outages. I dive deep into
-                system fundamentals because knowing exactly how the database
-                engine performs under pressure beats blindly scaling hardware.
-              </p>
-            </div>
-          </div>
-
-          <div class="space-y-8 lg:mt-8">
-            <div
-              v-for="(skill, i) in specialization"
-              :key="i"
-              class="border-l-2 border-purple-500/20 pl-8 hover:border-purple-500 transition-colors duration-500 group py-2"
-            >
-              <h4
-                class="text-2xl font-bold text-zinc-200 mb-3 group-hover:text-white"
-              >
-                {{ skill.area }}
-              </h4>
-              <p class="text-zinc-500 text-lg leading-relaxed">
-                {{ skill.desc }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="projects" class="py-32 border-t border-zinc-900/50 reveal">
-        <h3 class="text-4xl font-bold mb-16 tracking-tight">
-          Contributed & Personal Projects
-        </h3>
-        <div class="space-y-8">
-          <div
-            v-for="(proj, i) in projects"
-            :key="i"
-            class="border border-zinc-800/80 bg-zinc-950/40 backdrop-blur-md hover:bg-zinc-900/40 transition-all duration-500 p-8 lg:p-12 rounded-[2rem] group flex flex-col md:flex-row gap-8 lg:gap-16 shadow-2xl"
-          >
-            <div class="md:w-1/3 flex flex-col">
-              <h4
-                class="text-3xl font-bold text-zinc-100 group-hover:text-purple-400 transition-colors"
-              >
-                {{ proj.name }}
-              </h4>
-              <div
-                class="mt-4 text-xs tracking-widest text-zinc-500 uppercase font-bold"
-              >
-                {{ proj.tech }}
-              </div>
-            </div>
-
-            <div class="md:w-2/3 flex flex-col gap-6">
-              <div class="grid md:grid-cols-2 gap-8">
-                <div>
-                  <h5 class="text-zinc-200 font-semibold mb-2">Problem</h5>
-                  <p class="text-zinc-400 text-[1.05rem] leading-relaxed">
-                    {{ proj.problem }}
-                  </p>
-                </div>
-                <div>
-                  <h5 class="text-zinc-200 font-semibold mb-2">Architecture</h5>
-                  <p class="text-zinc-400 text-[1.05rem] leading-relaxed">
-                    {{ proj.architecture }}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                class="mt-4 pt-6 border-t border-zinc-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6"
-              >
-                <div>
-                  <span class="text-green-500 font-semibold">Outcome:</span>
-                  <span class="text-zinc-300 ml-3 text-[1.05rem]">{{
-                    proj.outcome
-                  }}</span>
-                </div>
-                <a
-                  v-if="proj.demoUrl"
-                  :href="proj.demoUrl"
-                  target="_blank"
-                  class="shrink-0 flex items-center gap-2 px-6 py-3 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 font-semibold rounded-xl transition-all border border-purple-500/20 whitespace-nowrap shadow-lg shadow-purple-900/20"
-                >
-                  <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                  View Demo
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="py-32 reveal">
-        <h3 class="text-4xl font-bold mb-16 tracking-tight">Career Timeline</h3>
-        <div class="relative pl-10 border-l border-zinc-800 space-y-16">
-          <div class="relative group">
-            <div
-              class="absolute -left-[49.5px] top-1.5 w-5 h-5 rounded-full bg-zinc-950 border-2 border-purple-500 group-hover:scale-125 transition-transform shadow-[0_0_8px_rgba(168,85,247,0.5)]"
-            ></div>
-            <h4 class="text-3xl font-bold text-zinc-100">
-              Senior Backend Engineer
-            </h4>
-            <div
-              class="text-purple-400/80 mb-6 text-sm font-bold tracking-widest uppercase mt-2"
-            >
-              SomethingStudio • 2024 — 2026
-            </div>
-            <p class="text-zinc-400 text-lg max-w-3xl leading-relaxed">
-              Developed in-game backend systems capable of processing
-              <span class="text-purple-400 font-bold">100+ event</span> updates
-              per second across distributed game servers while maintaining
-              consistent state synchronization. Built and maintained the web
-              service provided by SomethingStudio, allowing developers to manage
-              ROBLOX games and in-game events across multiple servers, achieving
-              <span class="text-purple-400 font-bold"
-                >99.5-99.9% successful</span
-              >
-              event delivery reliability and reducing manual operational actions
-              by roughly 40% through automation.
-            </p>
-          </div>
-          <div class="relative group">
-            <div
-              class="absolute -left-[49.5px] top-1.5 w-5 h-5 rounded-full bg-zinc-950 border-2 border-zinc-600 group-hover:scale-125 group-hover:border-zinc-400 transition-all"
-            ></div>
-            <h4 class="text-3xl font-bold text-zinc-300">Backend Engineer</h4>
-            <div
-              class="text-zinc-500 mb-6 text-sm font-bold tracking-widest uppercase mt-2"
-            >
-              Blackout Innovations • 2024 — 2025
-            </div>
-            <p class="text-zinc-400 text-lg max-w-3xl leading-relaxed">
-              Assisted in applying my expertise in gameplay programming and game
-              server infrastructure. Designed and implemented multiple highly
-              concurrent backend services within the game environment,
-              supporting
-              <span class="text-purple-400 font-bold"
-                >200-1,000+ concurrent players</span
-              >
-              per experience session and handling
-              <span class="text-purple-400 font-bold"
-                >50-150 gameplay events</span
-              >
-              per second during peak activity. Improved server responsiveness by
-              reducing average event processing latency from
-              <span class="text-purple-400 font-bold">~120 ms</span> to
-              <span class="text-purple-400 font-bold">40-60 ms</span>, resulting
-              in smoother gameplay interactions and fewer desynchronization
-              issues. Contributed to service stability improvements that reduced
-              server-side errors by approximately
-              <span class="text-purple-400 font-bold">25-35%</span> across live
-              sessions.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="contact"
-        class="py-32 reveal text-center border-t border-zinc-900/50"
-      >
-        <h3
-          class="text-5xl md:text-7xl font-black mb-8 text-glow tracking-tight mt-12"
-        >
-          Signal Received.
-        </h3>
-        <p
-          class="text-zinc-400 text-xl mb-12 max-w-2xl mx-auto leading-relaxed"
-        >
-          I'm currently engaged with exciting workflows, but my inbox is always
-          open regarding resilient architecture, distributed systems, or coffee.
-        </p>
-        <a
-          href="mailto:mihahrv@pm.me"
-          class="inline-block px-10 py-5 bg-zinc-100 text-zinc-950 text-lg font-bold rounded-2xl hover:bg-white hover:-translate-y-1 transition-all mb-20 shadow-xl shadow-zinc-100/10"
-        >
-          mihahrv@pm.me
-        </a>
-
-        <div class="flex justify-center gap-8">
-          <a
-            href="https://www.linkedin.com/in/mihael-ple%C5%A1ko-5a612233a/"
-            target="_blank"
-            class="w-14 h-14 rounded-full border border-zinc-800 bg-zinc-900/50 flex items-center justify-center hover:bg-zinc-800 hover:border-zinc-700 hover:text-white transition-all text-zinc-400 shadow-lg"
-          >
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path
-                d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
-              />
-            </svg>
+          <a href="#projects" class="inline-flex items-center justify-center px-8 py-4 bg-white text-black font-bold text-lg hover:bg-zinc-200 transition-colors uppercase tracking-widest text-sm">
+            Take a look
           </a>
         </div>
+
+        <div class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-6 pt-8 lg:pt-0">
+          <div class="border-editorial p-6 bg-zinc-950/40 backdrop-blur-sm">
+            <span class="text-4xl md:text-5xl font-serif text-white block mb-2">2+</span>
+            <span class="text-xs tracking-widest text-zinc-500 uppercase font-bold block mb-2">Years</span>
+            <span class="text-zinc-400 text-sm">Commercial Experience</span>
+          </div>
+          <div class="border-editorial p-6 bg-zinc-950/40 backdrop-blur-sm">
+            <span class="text-4xl md:text-5xl font-serif text-white block mb-2">99.99%</span>
+            <span class="text-xs tracking-widest text-zinc-500 uppercase font-bold block mb-2">Uptime</span>
+            <span class="text-zinc-400 text-sm">Maintained services</span>
+          </div>
+          <div class="border-editorial p-6 bg-zinc-950/40 backdrop-blur-sm">
+            <span class="text-4xl md:text-5xl font-serif text-white block mb-2">100k</span>
+            <span class="text-xs tracking-widest text-zinc-500 uppercase font-bold block mb-2">Events / Sec</span>
+            <span class="text-zinc-400 text-sm">Processed flawlessly</span>
+          </div>
+          <div class="border-editorial p-6 bg-zinc-950/40 backdrop-blur-sm flex flex-col justify-center">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+              <span class="text-white font-bold text-lg">Available</span>
+            </div>
+            <span class="text-zinc-400 text-sm">Open for new work</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 md:px-12 lg:px-24">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 py-32 border-editorial-b">
+        <div class="lg:col-span-5">
+          <h3 class="text-4xl md:text-5xl font-serif text-white mb-8">Engineering Philosophy.</h3>
+          <div class="text-lg text-zinc-400 space-y-6 font-sans">
+            <p>Architecture must be simple.</p>
+            <p>I prioritize stateless operations. I push complexity to persistent data boundaries only when necessary.</p>
+            <p>Readability matters. Understanding system fundamentals prevents outages.</p>
+            <p>Knowing database engine performance beats scaling hardware.</p>
+          </div>
+        </div>
+        
+        <div class="lg:col-span-6 lg:col-start-7">
+          <h3 class="text-4xl md:text-5xl font-serif text-white mb-8">Technology Stack.</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div v-for="group in techStack" :key="group.category" class="border-editorial p-6">
+              <h4 class="text-white font-bold mb-4 uppercase tracking-wider text-sm">{{ group.category }}</h4>
+              <ul class="space-y-2 text-zinc-400">
+                <li v-for="item in group.items" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="py-32 border-editorial-b">
+        <h3 class="text-5xl md:text-7xl font-serif text-white mb-16">Experience.</h3>
+        <div class="space-y-16">
+          <div v-for="job in experience" :key="job.company" class="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16">
+            <div class="md:col-span-4">
+              <h4 class="text-2xl text-white font-serif">{{ job.role }}</h4>
+              <div class="text-purple-400 mt-2 font-bold">{{ job.company }}</div>
+              <div class="text-zinc-500 text-sm mt-1">{{ job.period }}</div>
+            </div>
+            <div class="md:col-span-8">
+              <ul class="space-y-3 text-lg text-zinc-400 list-disc list-inside marker:text-zinc-700">
+                <li v-for="bullet in job.bullets" :key="bullet">{{ bullet }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <footer
-        class="py-12 border-t border-zinc-900 text-center text-zinc-600 text-sm"
-      >
-        <p>&copy; 2026&copy; Mihael Pleško</p>
-      </footer>
-    </div>
+      <section id="projects" class="py-32">
+        <h3 class="text-5xl md:text-7xl font-serif text-white mb-16">Projects.</h3>
+        <div class="space-y-16">
+          <div v-for="proj in projects" :key="proj.name" class="border-editorial p-8 md:p-12">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
+              <div>
+                <h4 class="text-3xl md:text-4xl font-serif text-white">{{ proj.name }}</h4>
+                <div class="text-sm font-bold text-zinc-500 tracking-widest uppercase mt-4">{{ proj.tech }}</div>
+              </div>
+              <a v-if="proj.demoUrl" :href="proj.demoUrl" target="_blank" class="px-6 py-3 border border-zinc-700 text-white hover:bg-white hover:text-black transition-colors duration-200 uppercase tracking-widest text-sm font-bold">
+                {{ proj.isDemo ? "View Demo" : "View Product" }}
+              </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-8">
+              <div>
+                <h5 class="text-white uppercase tracking-wider text-sm font-bold mb-4">Problem</h5>
+                <p class="text-zinc-400 text-lg leading-relaxed">{{ proj.problem }}</p>
+              </div>
+              <div>
+                <h5 class="text-white uppercase tracking-wider text-sm font-bold mb-4">Architecture</h5>
+                <p class="text-zinc-400 text-lg leading-relaxed">{{ proj.architecture }}</p>
+              </div>
+            </div>
+            
+            <div class="pt-8 border-editorial-t">
+              <span class="text-white uppercase tracking-wider text-sm font-bold mr-4">Outcome:</span>
+              <span class="text-zinc-400 text-lg">{{ proj.outcome }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="px-6 py-32 md:px-12 lg:px-24 border-editorial-t bg-zinc-950 text-center">
+      <h3 class="text-6xl md:text-8xl font-serif text-white mb-8">Contact Me.</h3>
+      <p class="text-xl text-zinc-400 mb-12 max-w-lg mx-auto">
+        My inbox is open for new work. 
+      </p>
+      <a href="mailto:mihahrv@pm.me" class="inline-block px-8 py-4 bg-white text-black font-bold text-lg hover:bg-zinc-200 transition-colors">
+        mihahrv@pm.me
+      </a>
+      
+      <div class="mt-32 text-zinc-600 text-sm flex flex-col items-center gap-4">
+        <a href="https://www.linkedin.com/in/mihael-ple%C5%A1ko-5a612233a/" target="_blank" class="link-hover text-zinc-400 hover:text-white transition-colors">
+          LinkedIn
+        </a>
+        <p>&copy; 2026 Mihael Pleško. All rights reserved.</p>
+      </div>
+    </footer>
   </div>
 </template>
