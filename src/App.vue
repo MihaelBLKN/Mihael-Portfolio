@@ -90,7 +90,7 @@ const experience = [
             Website Developer.
           </h2>
           <p class="text-lg md:text-xl text-zinc-300 max-w-md font-sans leading-relaxed mb-12">
-            You need a reliable web application. I build frontends and backends. My code handles high traffic without breaking. I deliver functional results.
+            You need a reliable web application. I build frontends and backends. My code handles high traffic without breaking. I deliver functional results, not <span style="color: var(--color-accent) !important">bullsh*t</span>.
           </p>
           <a href="#projects" class="inline-flex items-center justify-center px-8 py-4 bg-white text-black font-bold text-lg hover:bg-zinc-200 transition-colors uppercase tracking-widest text-sm">
             Take a look

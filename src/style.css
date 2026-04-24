@@ -2,9 +2,9 @@
 
 @layer base {
   :root {
-    --color-bg: #09090b; /* zinc-950 */
-    --color-text: #d4d4d8; /* zinc-300 */
-    --color-accent: #a855f7; /* purple-500 */
+    --color-bg: #09090b;
+    --color-text: #d4d4d8;
+    --color-accent: #a855f7;
   }
 
   body {
@@ -35,9 +35,8 @@
     font-family: 'Manrope', system-ui, sans-serif;
   }
 
-  /* Precise editorial borders */
   .border-editorial {
-    border: 1px solid #27272a; /* zinc-800 */
+    border: 1px solid #27272a;
   }
 
   .border-editorial-t {
@@ -52,7 +51,6 @@
     border-left: 1px solid #27272a;
   }
 
-  /* Micro-interactions */
   .link-hover {
     position: relative;
     text-decoration: none;
