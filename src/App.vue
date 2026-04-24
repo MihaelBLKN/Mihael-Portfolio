@@ -2,7 +2,7 @@
 const techStack = [
   {
     category: "Backend",
-    items: ["GoLang", "TypeScript", "Luau", "Python", "PHP", "Node.js"],
+    items: ["GoLang", "TypeScript", "Luau", "Python", "Node.js"],
   },
   {
     category: "Frontend",
@@ -14,7 +14,7 @@ const techStack = [
   },
   {
     category: "Infrastructure",
-    items: ["Kubernetes", "Kafka", "gRPC", "Docker", "Linux"],
+    items: ["Kubernetes", "Docker", "Linux"],
   },
 ];
 
@@ -25,7 +25,7 @@ const projects = [
       "There were no practical Roblox courses with an in-browser Luau runtime.",
     architecture:
       "We built microservices and used Kubernetes to run a custom in-browser Luau runtime. We implemented course management and interactive coding challenges.",
-    tech: "GoLang, Containerd, Kubernetes, Luau, Zap, Three.js, WASM",
+    tech: "GoLang, Containerd, Kubernetes, Luau, Zap, Three.js",
     outcome:
       "The system handles 160+ simultaneous users. Uptime remains at 99.98%.",
     demoUrl: "https://luaxis.xyz/",
@@ -107,11 +107,6 @@ const experience = [
             <span class="text-4xl md:text-5xl font-serif text-white block mb-2">99.99%</span>
             <span class="text-xs tracking-widest text-zinc-500 uppercase font-bold block mb-2">Uptime</span>
             <span class="text-zinc-400 text-sm">Maintained services</span>
-          </div>
-          <div class="border-editorial p-6 bg-zinc-950/40 backdrop-blur-sm">
-            <span class="text-4xl md:text-5xl font-serif text-white block mb-2">100k</span>
-            <span class="text-xs tracking-widest text-zinc-500 uppercase font-bold block mb-2">Events / Sec</span>
-            <span class="text-zinc-400 text-sm">Processed flawlessly</span>
           </div>
           <div class="border-editorial p-6 bg-zinc-950/40 backdrop-blur-sm flex flex-col justify-center">
             <div class="flex items-center gap-3 mb-2">
